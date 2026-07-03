@@ -1,0 +1,67 @@
+📁 项目结构已就绪，下面是完整分类说明
+我按 3 种生命周期 给你分好了，先看总表：
+
+🔒 写死的（一次写完，基本不动）
+文件/目录	说明
+blueprint/ 全部 9 个文件	项目蓝图和参考架构。昨天已写好，除非项目方向大改，否则永远不改。对应着看就行
+.gitignore	Git 忽略规则，项目初期配好就不动
+docs/DECISIONS.md	技术决策记录。遇到岔路口时追加一条（比如"为什么选 Savitzky-Golay 而不是 LOESS"）。频率：几周一次
+docs/report_design.md	报告排版规范。等你要调报告样式时参考，设计定了就不改
+data/fonts/	中文字体文件（扔个 SimHei.ttf 进去）。放一次用一辈子
+outputs/examples/	生成 3 份示例报告后放着。给人演示用，不删不改
+✏️ 天天改的（开发期高频修改）
+文件	                    为什么天天改	当前状态
+main.py	               加了新功能就要加 CLI 参数，调试入口在此	                                                                                                    ✅ 已写好骨架，python main.py --region 郓城县 可直接用
+config.yaml	              调参频繁：日期范围、云量阈值、缓冲区大小、颜色映射……改完不用动源码	                                       ✅ 已填好所有参数和默认值
+src/pipeline.py	               流程编排，加一个模块就多一步。这是你的工作流大脑	                                                         ✅ 7 步全写好，# TODO 标记了待补的衔接代码
+src/geocode.py	               地名匹配逻辑需要调试（模糊匹配、歧义处理）	                                                            ⚠️ 函数签名完整，核心逻辑待实现
+src/gee_fetcher.py	       GEE 数据拉取最易出错（认证、配额、去云参数）	                                                 ⚠️ mask_s2_clouds + get_s2_collection 已实现，导出逻辑待补
+src/ndvi_calc.py	               统计指标需要根据实际数据调优（异常值阈值、snow mask）	⚠️ compute_stats 已实现，batch_compute 待补
+src/timeseries.py	       插值方法选型（线性 vs 样条）、平滑窗口调参	⚠️ build_timeseries + interpolate_gaps + smooth_savgol 已实现
+src/fft_analyzer.py	       窗函数选型、主周期提取阈值，调参大户	✅ 全部函数已实现（除谐波重建）
+src/visualizer.py	                每次看效果调颜色、字号、布局	✅ plot_timeseries + plot_fft_spectrum 已实现
+src/report_gen.py	        reportlab 排版是体力活，反复调	⚠️ 函数签名完整，核心逻辑待实现
+src/config.py	                配置加载逻辑，一般不改，但加新配置项时需同步	✅ 完整实现
+tests/test_modules.py	每实现一个函数，就加一条测试	✅ 已有 7 个测试，可直接 pytest tests/ -v
+docs/TODAY.md	        顾名思义：每天更新今日任务 ✅ / ❌	✅ 已有，每天填
+docs/NOTES.md	       学到什么立刻记，不记就忘	✅ 已有，随时追加
+docs/CHANGELOG.md      每完成一个模块就记一条	✅ 已有
+README.md	               项目进展和用法，阶段性更新	✅ 已写好骨架
+requirements.txt	        每次 pip install 新包要追加	✅ 已填好核心依赖
+⏸️ 暂时空的（不着急填）
+文件/目录	为什么是空的	什么时候填
+data/raw/	还没有跑 GEE 导出	第一次执行 python main.py --region 郓城县 时自动填充
+data/processed/	还没有跑 NDVI 批量计算	pipeline 跑到 Step 3 时自动生成 CSV/JSON
+outputs/maps/	可视化模块还没跑	visualizer 生成第一张地图时填充
+outputs/charts/	同上	visualizer 生成第一张图表时填充
+outputs/reports/	报告生成模块还没通	pipeline 跑到 Step 7 时出第一份 PDF
+logs/pipeline.log	程序还没跑过	python main.py 第一次运行时自动创建
+data/fonts/SimHei.ttf	需要你手动放进去	在第一次生成带中文的图表前放进去。去 C:\Windows\Fonts\ 找 simhei.ttf 拷过来
+这些 .gitkeep 文件让 Git 能追踪空目录，等目录里有了真实文件后删掉就行。
+
+🔑 关于 blueprint/ 怎么用
+你昨天建的这 9 个文件是项目的 "宪法"——写代码之前看一眼对应的图，就不会跑偏：
+
+当你要……	先看这个
+搞清楚整体架构	PROJECT_ARCHITECTURE.md ← 你现在打开的这个
+看项目全景和目标	PROJECT_OVERVIEW.md
+理清数据流	PROJECT_FLOW.md
+规划今天干什么	TASK_ROADMAP.md + docs/TODAY.md
+了解风险和难点	RISK.md
+学新概念（FFT、NDVI）	KNOWLEDGE_MAP.md
+规划学习路径	STUDY_STRATEGY.md
+看里程碑和时间线	PROJECT_ROADMAP.md + PROJECT_TIMELINE.md
+简单说：blueprint = 参考书，不看的时候放那不用动；src/ = 你的工地，天天在上面敲。
+
+Update Todos
+
+创建所有缺失的目录（outputs/, logs/, data/fonts/, tests/）
+
+创建核心入口文件（main.py, config.yaml, .gitignore, requirements.txt）
+
+创建 src/ 下 9 个模块文件（含完整函数签名和文档）
+
+创建 tests/test_modules.py、docs/report_design.md、README.md、.gitkeep
+
+输出分类说明：静态 vs 动态 vs 暂不需要填
+总结一句话：目录结构全部就位，源码骨架已写好，你可以直接从 python main.py --region 郓城县 起步。接下来按 TASK_ROADMAP.md 的顺序，先把 geocode.py 和 gee_fetcher.py 的 TODO 补上，就能打通第一段数据流了。

@@ -4,21 +4,22 @@
 一战：GeoTIFF 驯服战
 
 ## 今天完成
-- [x] 创建项目目录
-- [x] 创建文档体系（README、PROJECT、TODAY、DECISIONS、CHANGELOG）
-- [x] 创建 Python 虚拟环境
-- [x] 安装 numpy、matplotlib、rasterio
-- [x] 验证 Python 开发环境（check_env.py）
-- [x] 创建 data/raw、data/processed、outputs、scripts 目录
-- [x] 注册 Google Earth Engine（非商业项目）
+- [√] 创建项目目录
+- [√] 创建文档体系（README、PROJECT、TODAY、DECISIONS、CHANGELOG）
+- [√] 创建 Python 虚拟环境
+- [√] 安装 numpy、matplotlib、rasterio
+- [√ 验证 Python 开发环境（check_env.py）
+- [√] 创建 data/raw、data/processed、outputs、scripts 目录
+- [√] 注册 Google Earth Engine（非商业项目）
 
 ## 当前卡点
 - 暂无
 
 ## 明天计划
-- [ ] 学习 GeoTIFF 基础概念
-- [ ] 获取第一张 Sentinel-2 GeoTIFF
-- [ ] 使用 rasterio 读取 GeoTIFF 元数据
+- [√] 学习 GeoTIFF 基础概念
+- [x] 获取第一张 Sentinel-2 GeoTIFF
+- [×] 使用 rasterio 读取 GeoTIFF 元数据
+
 
 
 # TODAY
@@ -107,3 +108,32 @@ ImageCollection
 Image
 
 然后显示第一张真正可分析的 Sentinel-2 影像。
+
+
+## 2026-07-03
+
+### 今天完成
+
+- [√] 学习 dataset.first()：ImageCollection → Image
+- [√] 第一次显示真正的 Sentinel-2 真彩色影像（B4/B3/B2）
+- [√] 理解 B2/B3/B4/B8 每个波段含义
+- [√] 学习 Export.image.toDrive() 全部参数
+- [√] 解决导出 Bug：UInt16 与 Byte 数据类型不兼容 → select() 只导出需要的波段
+- [√] 成功导出 sentinel2_sample.tif 到 Google Drive
+- [√] 下载 GeoTIFF 到 data/raw/sentinel2_sample.tif
+
+### 今天踩坑
+
+1. 忘记 Ctrl+S 保存 GEE 代码 → 刷新后代码丢失 → 以后先保存再 Run
+2. 导出全部波段报错：UInt16 与 Byte 不一致 → 用 select(['B2','B3','B4','B8']) 解决
+3. JavaScript 对象漏写逗号 → 养成检查语法的习惯
+
+### 当前卡点
+
+- 暂无
+
+### 明天计划
+
+- [ ] 使用 rasterio 读取 sentinel2_sample.tif 并打印元数据
+- [ ] 提取 B4 和 B8 波段为 numpy 数组
+- [ ] 使用 matplotlib 显示真彩色影像

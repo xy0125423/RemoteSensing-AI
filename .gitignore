@@ -1,0 +1,43 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+
+# 数据（不纳入版本控制）
+data/raw/*
+data/processed/*
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+
+# 输出（不纳入版本控制）
+outputs/maps/*
+outputs/charts/*
+outputs/reports/*
+!outputs/maps/.gitkeep
+!outputs/charts/.gitkeep
+!outputs/reports/.gitkeep
+!outputs/examples/
+
+# 日志
+logs/*
+!logs/.gitkeep
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# 系统文件
+.DS_Store
+Thumbs.db
+
+# Jupyter
+.ipynb_checkpoints/
+
+# 环境变量
+.env

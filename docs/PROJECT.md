@@ -157,7 +157,7 @@ python main.py --region 广西
 
 
 
-## 第一战：GeoTIFF 驯服战2026-07-02
+## 第一战：GeoTIFF 驯服战（2026-07-02 ~ 2026-07-03）
 
 ### 已完成
 
@@ -165,32 +165,22 @@ python main.py --region 广西
 
 ✅ Google Earth Engine 基础
 
-✅ Geometry
+✅ Geometry / ImageCollection / filterBounds() / filterDate() / Cloud Filter
 
-✅ ImageCollection
+✅ ImageCollection → Image（first()）
 
-✅ filterBounds()
+✅ Map.addLayer() 真彩色显示
 
-✅ filterDate()
+✅ Export.image.toDrive() 导出
 
-✅ Cloud Filter
+✅ GeoTIFF 已放入 data/raw/sentinel2_sample.tif
 
 当前成果：
 
-研究区：
-
-Study Area
-
-时间：
-
-2025
-
-最终得到：
-
-28 张高质量 Sentinel-2 影像。
+从全球 Sentinel-2 数据集中，筛选出郓城县 2025 年云量 <10% 的 28 张影像，成功导出第一张 GeoTIFF 到本地。
 
 ### 下一阶段
 
-- first()
-- Map.addLayer()
-- 导出第一张 GeoTIFF
+- rasterio 读取 GeoTIFF 元数据
+- 提取 B4/B8 为 numpy 数组
+- matplotlib 显示真彩色影像（本地）

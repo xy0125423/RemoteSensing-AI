@@ -20,5 +20,15 @@
 - 成功获得 28 张高质量影像
 
 
+## 2026-07-03
+
+- 学习 dataset.first()：ImageCollection → Image
+- 学习 Map.addLayer() 可视化参数（bands/min/max）
+- 理解 B2/B3/B4/B8 波段含义与用途
+- 学习 Export.image.toDrive() 导出参数
+- 解决 GEE 导出数据类型冲突 Bug（UInt16 vs Byte）
+- 成功导出第一张 Sentinel-2 GeoTIFF（sentinel2_sample.tif）
+- 将 GeoTIFF 放入 data/raw/sentinel2_sample.tif
+- ✅ Task 01 & Task 02 完成
 
 

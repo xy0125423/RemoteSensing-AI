@@ -41,10 +41,6 @@ ImageCollection 是 GEE 中用于存放大量遥感影像的集合。
 在 GEE 中，我们通常先获取 ImageCollection，再筛选区域、时间和云量，最后得到需要分析的一张或多张影像。
 
 
-
-
-# 2026-07-01
-
 ## 今天我学会了什么？
 
 今天真正接触了 Google Earth Engine（GEE）。
@@ -277,3 +273,64 @@ ee.Filter.lt(
 28 张高质量影像。
 
 这是整个项目迈出的第一步，也是后续 NDVI、时序分析、FFT、PDF 自动生成等所有功能的数据基础。
+
+
+## 2026-07-03
+
+### ImageCollection → Image
+
+`dataset.first()` 从集合中取出第一张影像。
+
+- `filter()` 不会排序
+- `first()` 不代表云量最小，仅表示当前集合中的第一张
+
+### Map.addLayer() 真正用法
+
+不能直接 `Map.addLayer(image)`，地图会变黑。
+
+必须指定可视化参数：
+
+```javascript
+Map.addLayer(image, {
+    bands: ["B4", "B3", "B2"],
+    min: 0,
+    max: 3000
+}, "True Color");
+```
+
+三个参数：
+1. 要显示的 Image
+2. 可视化参数（波段组合 + 拉伸范围）
+3. 图层名称
+
+### B2/B3/B4/B8 速记
+
+| 波段 | 颜色 | 用途 |
+|------|------|------|
+| B2 | Blue | 真彩色 |
+| B3 | Green | 真彩色 |
+| B4 | Red | 真彩色 + NDVI |
+| B8 | Near Infrared | NDVI |
+
+真彩色 = B4 + B3 + B2
+NDVI = (B8 - B4) / (B8 + B4)
+
+### Export.image.toDrive() 参数
+
+```javascript
+Export.image.toDrive({
+    image: exportImage,       // 要导出的 Image
+    description: 'Task名称',  // Tasks 面板显示的名称
+    folder: 'GEE_Exports',    // Google Drive 文件夹
+    fileNamePrefix: '文件名',  // 最终文件名
+    region: geometry,         // 导出区域（必须用 geometry！）
+    scale: 10,                // 分辨率 10m（Sentinel-2 可见光）
+    maxPixels: 1e13           // 最大像素数
+});
+```
+
+### 关键工程经验
+
+1. **不要导出全部波段**：Sentinel-2 不同波段有不同数据类型（UInt16 / Byte），混在一起导出会报错。用 `select()` 只选需要导出的波段。
+2. **GEE 先保存再运行**：Ctrl+S → Run，养成肌肉记忆，否则刷新页面代码全丢。
+3. **JavaScript 对象逗号**：每个属性后面必须有逗号，最后一个属性可省略。

@@ -1,0 +1,55 @@
+# ============================================================
+# RemoteSensing-AI  全局配置文件
+# ============================================================
+# 修改此文件即可调整运行参数，无需改动源码。
+# 命令行参数会覆盖此处的值（见 main.py --help）。
+
+# ---- 时间范围 ----
+time:
+  start: "2023-01-01"   # 数据起始日期
+  end: "2023-12-31"     # 数据结束日期
+
+# ---- 地理空间 ----
+geo:
+  buffer_km: 5           # 区域缓冲区半径（km）
+  cloud_max: 20          # 最大云覆盖百分比（0-100）
+
+# ---- NDVI ----
+ndvi:
+  scale: 10              # 空间分辨率（米），Sentinel-2 = 10m
+  masked_cloud: true     # 是否掩膜云像元
+  filter_snow: true      # 是否过滤积雪像元
+
+# ---- FFT 频谱分析 ----
+fft:
+  window: "hann"         # 窗函数：hann | hamming | blackman | none
+  detrend: "linear"      # 去趋势方法：linear | mean | none
+
+# ---- 可视化 ----
+viz:
+  dpi: 150               # 输出图片分辨率
+  fig_width: 12          # 图宽（英寸）
+  fig_height: 6          # 图高（英寸）
+  cmap: "RdYlGn"         # NDVI 颜色映射
+  font_family: "SimHei"  # 中文字体（需安装）
+
+# ---- 报告 ----
+report:
+  title: "NDVI 时间序列分析报告"
+  include_fft: true      # 是否包含 FFT 分析章节
+  include_charts: true   # 是否包含图表
+
+# ---- 路径（相对于项目根目录） ----
+paths:
+  data_raw: "data/raw"
+  data_processed: "data/processed"
+  fonts: "data/fonts"
+  maps: "outputs/maps"
+  charts: "outputs/charts"
+  reports: "outputs/reports"
+  logs: "logs"
+
+# ---- 日志 ----
+logging:
+  level: "INFO"          # DEBUG | INFO | WARNING | ERROR
+  file: "logs/pipeline.log"
