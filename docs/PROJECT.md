@@ -157,7 +157,7 @@ python main.py --region 广西
 
 
 
-## 第一战：GeoTIFF 驯服战（2026-07-02 ~ 2026-07-03）
+## 第一战：GeoTIFF 驯服战（2026-07-02 ~ 进行中）
 
 ### 已完成
 
@@ -167,20 +167,34 @@ python main.py --region 广西
 
 ✅ Geometry / ImageCollection / filterBounds() / filterDate() / Cloud Filter
 
-✅ ImageCollection → Image（first()）
-
-✅ Map.addLayer() 真彩色显示
-
-✅ Export.image.toDrive() 导出
+✅ ImageCollection → Image（first()）/ Map.addLayer() / Export.image.toDrive()
 
 ✅ GeoTIFF 已放入 data/raw/sentinel2_sample.tif
 
-当前成果：
+✅ GeoTIFF 元数据理解（width、height、count、crs、transform、resolution、Band Mapping）
 
-从全球 Sentinel-2 数据集中，筛选出郓城县 2025 年云量 <10% 的 28 张影像，成功导出第一张 GeoTIFF 到本地。
+✅ Task 03：rasterio 读取 GeoTIFF 全量元数据（read_geotiff.py）
 
-### 下一阶段
+✅ Task 04：提取 B4/B8 为 numpy 数组 + 统计信息（min/max/mean/std/shape/dtype）
 
-- rasterio 读取 GeoTIFF 元数据
-- 提取 B4/B8 为 numpy 数组
-- matplotlib 显示真彩色影像（本地）
+✅ NumPy Element-wise Operation：NDVI = (B8 - B4) / (B8 + B4) 首次计算成功
+
+### 当前进度
+
+- 环境搭建：██████████ 100%
+- Git 工程化：██████████ 100%
+- GEE 基础：██████████ 100%
+- 数据筛选：██████████ 100%
+- 第一张 Image：██████████ 100%
+- GeoTIFF 导出：██████████ 100%
+- Python 读取：██████░░░░ 60%
+- NDVI：███░░░░░░░ 30%
+- 时序分析：░░░░░░░░░░ 0%
+- FFT：░░░░░░░░░░ 0%
+- PDF 自动报告：░░░░░░░░░░ 0%
+
+### 下一阶段（Task 05）
+
+- 使用 matplotlib 显示 Sentinel-2 真彩色影像（B4-B3-B2）
+- 2%~98% 对比度拉伸（clip + normalize）
+- 坐标轴显示经纬度

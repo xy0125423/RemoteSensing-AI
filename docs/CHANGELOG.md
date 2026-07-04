@@ -32,3 +32,20 @@
 - ✅ Task 01 & Task 02 完成
 
 
+## 2026-07-04
+
+- 安装 PyYAML，解决 import yaml 问题（安装名 ≠ 导入名）
+- 学习 rasterio.open() 与 DatasetReader（Lazy Reading 工程思想）
+- 学习 GeoTIFF Metadata：width、height、count、crs、transform、bounds
+- 理解 Resolution 与真实面积换算（216×174 px × 100㎡ ≈ 3.76 km²）
+- 理解 Band Mapping（dataset.read(1) = 导出第1个波段 = S2 B2）
+- 理解 B4/B8 逐像素一一对应 → NDVI 计算基础
+- 建立完整 GeoTIFF 数据流心智模型（文件 → DatasetReader → 二维数组 → 逐像素运算）
+- ✅ Task 03 完成：read_geotiff.py 打印全部 GeoTIFF 元数据
+- ✅ Task 04 完成：B4/B8 波段提取 + 统计信息（min/max/mean/std/shape/dtype）
+- ✅ 新增 NDVI 首次计算：(b8 - b4) / (b8 + b4)，NumPy Element-wise Operation
+- 新增 dtype 转换学习：uint16 → float32，遥感计算统一使用 float32
+- 新增 ndarray / shape / Element-wise Op / NDVI / NIR / Reflectance 概念学习
+- 踩坑 8 条 + 概念误区澄清 7 项
+
+

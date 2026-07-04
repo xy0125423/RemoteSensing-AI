@@ -58,7 +58,7 @@
 
 ---
 
-### Task 03：使用 rasterio 读取 GeoTIFF 并打印全部元数据
+### [x] Task 03：使用 rasterio 读取 GeoTIFF 并打印全部元数据 ✅ 2026-07-04
 
 - **Phase**：Phase 1
 - **预计耗时**：2 小时
@@ -78,7 +78,7 @@
 
 ---
 
-### Task 04：提取 B4 和 B8 波段为 numpy 数组并打印统计信息
+### [x] Task 04：提取 B4 和 B8 波段为 numpy 数组并打印统计信息 ✅ 2026-07-04
 
 - **Phase**：Phase 1
 - **预计耗时**：2 小时
@@ -883,8 +883,8 @@
 |------|-------|------|----------|----------|
 | 01 | 1 | ✅ GEE 导出第一张 GeoTIFF | 2h | GEE Export |
 | 02 | 1 | ✅ 下载到本地 data/raw/ | 1h | 文件管理 |
-| 03 | 1 | rasterio 读取元数据 | 2h | rasterio |
-| 04 | 1 | 提取 B4/B8 为 numpy 数组 | 2h | numpy |
+| 03 | 1 | ✅ rasterio 读取元数据 | 2h | rasterio |
+| 04 | 1 | ✅ 提取 B4/B8 为 numpy 数组 | 2h | numpy |
 | 05 | 1 | matplotlib 显示真彩色 | 3h | matplotlib |
 | 06 | 1 | 批量导出 28 景影像 | 3h | GEE batch |
 | 07 | 1 | 批量读取元数据汇总 | 2h | glob+rasterio |

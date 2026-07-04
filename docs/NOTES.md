@@ -334,3 +334,307 @@ Export.image.toDrive({
 1. **不要导出全部波段**：Sentinel-2 不同波段有不同数据类型（UInt16 / Byte），混在一起导出会报错。用 `select()` 只选需要导出的波段。
 2. **GEE 先保存再运行**：Ctrl+S → Run，养成肌肉记忆，否则刷新页面代码全丢。
 3. **JavaScript 对象逗号**：每个属性后面必须有逗号，最后一个属性可省略。
+
+
+## 2026-07-04
+
+### Python 库安装名 vs 导入名
+
+安装名和导入名有时不同，这是 Python 生态的常见现象：
+
+| 安装名 | 导入名 |
+|--------|--------|
+| pyyaml | yaml |
+| opencv-python | cv2 |
+| pillow | PIL |
+| scikit-learn | sklearn |
+
+以后安装后报黄色波浪线，先确认这两者是否一致。
+
+### rasterio.open() 与 DatasetReader
+
+```python
+import rasterio
+dataset = rasterio.open('sentinel2_sample.tif')
+```
+
+返回的是 `DatasetReader`——一个读取器，不是数据本身。
+
+核心工程思想：**Lazy Reading（按需读取）**。
+
+GeoTIFF 不一次性加载到内存，需要哪个波段就读哪个，避免大型遥感数据撑爆内存。
+
+### GeoTIFF 元数据速查
+
+| 属性 | 含义 | 单位 |
+|------|------|------|
+| dataset.width | 图像宽度 | 像素 |
+| dataset.height | 图像高度 | 像素 |
+| dataset.count | 波段数量 | 个 |
+| dataset.crs | 坐标参考系 | EPSG |
+| dataset.transform | 仿射变换 | — |
+| dataset.bounds | 地理范围 | 经纬度 |
+
+### Resolution（分辨率）
+
+10m Resolution 意味着：
+
+一个 Pixel = 10m × 10m = 100㎡
+
+真实宽度 = width × Resolution
+真实高度 = height × Resolution
+
+当前 GeoTIFF：216 × 174 像素 × 100㎡ = 3758400㎡ ≈ 3.76 km²
+
+### Band Mapping（波段映射关系）
+
+导出的 GeoTIFF 只包含 4 个波段，数据集内部重新编号：
+
+| dataset.read() | 导出文件中的位置 | 原始 Sentinel-2 波段 |
+|---------------|-----------------|---------------------|
+| read(1) | 第 1 个波段 | B2（Blue） |
+| read(2) | 第 2 个波段 | B3（Green） |
+| read(3) | 第 3 个波段 | B4（Red） |
+| read(4) | 第 4 个波段 | B8（NIR） |
+
+**关键理解**：`dataset.read(1)` 读取的是导出顺序的第 1 个，不是 Sentinel-2 原始 Band 1。
+
+### 为什么 B4 和 B8 能算 NDVI
+
+四个波段拍的是同一块区域、同一时刻。
+
+B4 和 B8 的每个 Pixel 位置一一对应。
+
+区别仅仅是：不同光谱波段对同一地面的不同响应。
+
+所以公式 NDVI = (B8 - B4) / (B8 + B4) 是逐像素一一对应的数学运算。
+
+### GeoTIFF vs JPG
+
+| 特性 | JPG | GeoTIFF |
+|------|-----|---------|
+| 坐标信息 | ❌ | ✅（CRS + Transform） |
+| 多波段 | ❌（RGB 三通道） | ✅（任意波段数） |
+| 数据类型 | 8-bit 整数 | uint16 / float32 |
+| 用途 | 看图 | 科学分析 |
+
+### dataset.read() 返回值
+
+`dataset.read(1)` 返回的是一个**二维 numpy 数组**（整个波段的所有像素），不是单个数值。
+
+- 形状：`(height, width)`，例如 `(174, 216)`
+- 类型：取决于 GeoTIFF 存储类型（Sentinel-2 L2A 通常是 uint16）
+- 取单个像素：`data[row, col]`
+
+### VS Code 生产力技巧
+
+| 现象 | 含义 | 该怎么做 |
+|------|------|----------|
+| 文件 tab 黄色数字 | Problems 面板有 Warning | 点开查看具体提示，不一定是错误 |
+| import 黄色波浪线 | Pylance 找不到模块 | `pip show <包名>` 确认是否已安装 |
+| 终端无输出 | 代码没有 print() | 程序可能已成功执行，加 print 验证 |
+| 程序是否成功 | 看 Terminal 不是编辑器 | 终端返回码为 0 = 成功 |
+
+### 今日踩坑总结
+
+今天建立的认知：**遥感工程开发不是 API 背诵，而是数据结构理解**。
+
+核心心智模型：
+```
+GeoTIFF 文件 ──rasterio.open()──▶ DatasetReader（读取器）
+                                     │
+                                     ├── .width / .height（像素数量，不是米）
+                                     ├── .count（导出波段数，不是 S2 原始编号）
+                                     ├── .crs / .transform（地理坐标信息）
+                                     └── .read(i)（第 i 个波段的二维数组）
+```
+
+后续所有操作（NDVI、NDWI、EVI、时序分析）都建立在这个模型之上。
+
+---
+
+### NumPy ndarray — 遥感数据的载体
+
+`dataset.read()` 返回的是 `numpy.ndarray`，不是 Python 原生的 list。
+
+```python
+b4 = dataset.read(3)          # 返回 numpy.ndarray
+print(type(b4))               # <class 'numpy.ndarray'>
+print(b4.shape)               # (174, 216) — 174 行 × 216 列
+print(b4.dtype)               # uint16 — 原始数据类型
+```
+
+**ndarray vs Python list**：
+
+| 特性 | Python list | numpy.ndarray |
+|------|-------------|---------------|
+| 存储 | 分散在内存中 | 连续内存块 |
+| 运算 | 需要 for 循环 | 向量化，一次处理全部 |
+| 数学操作 | `[x+1 for x in lst]` | `arr + 1` |
+| 科学计算 | 不适合 | 专为科学计算设计 |
+
+**为什么遥感必须用 ndarray**：一张 Sentinel-2 影像 216×174 = 37,584 个像素。用 Python for 循环一个个算 NDVI 会极慢；用 ndarray 的 Element-wise Operation 一次性完成。
+
+---
+
+### shape — 数组的维度信息
+
+```python
+b4.shape    # (174, 216)
+ndvi.shape  # (174, 216) — NDVI 和原始波段同形状
+```
+
+- `(174, 216)` = (行数, 列数) = (height, width)
+- 每个波段 shape 完全相同，所以可以逐像素运算
+
+---
+
+### dtype — 数据类型
+
+| dtype | 范围 | 内存 | 用途 |
+|-------|------|------|------|
+| uint16 | 0 ~ 65535 | 2 字节 | Sentinel-2 原始存储 |
+| float32 | ±3.4×10³⁸ | 4 字节 | NDVI 等浮点运算 |
+
+**关键操作**：
+```python
+b4 = dataset.read(3)              # dtype = uint16
+b4 = b4.astype('float32')         # dtype = float32
+```
+
+**为什么必须转换**：
+- uint16 的除法：`5 / 2 = 2`（整数除法，丢失小数）
+- float32 的除法：`5.0 / 2.0 = 2.5`（保留小数）
+- NDVI 值在 -1~1 之间，必须用浮点类型
+
+---
+
+### uint16 — 遥感数据的整数存储格式
+
+Sentinel-2 L2A 产品将地表反射率（0~1）乘以 10000 后存储为 uint16 整数。
+
+```
+DN 值  = 地表反射率 × 10000
+例如：DN = 3500  →  真实反射率 = 0.35
+```
+
+**为什么这样做**：整数存储比浮点数更省空间（2 字节 vs 4 字节），且无损精度。
+
+---
+
+### float32 — 科学计算的标准浮点类型
+
+```python
+b4 = b4.astype('float32')  # 转换后可以进行浮点除法
+```
+
+选择 float32 而非 float64 的原因：
+- float32 精度足够（7 位有效数字），NDVI 只需要 2~3 位
+- 内存减半（4 字节 vs 8 字节）
+- 本项目 216×174=37,584 像素，float32 完全可以
+
+---
+
+### Reflectance（地表反射率）
+
+地表反射率 = 地面反射的辐射 / 到达地面的辐射，范围 0~1。
+
+- Sentinel-2 L2A 已做大气校正，数据即地表反射率
+- DN ÷ 10000 = 真实反射率
+- 例如：B4 的 DN 均值 1500 → 反射率 0.15（红光波段低反射，植被吸收了红光）
+
+---
+
+### Pixel（像素）
+
+一个 Pixel = 遥感影像的最小单元 = 地面上 10m×10m 的正方形区域。
+
+本张影像：216 × 174 = 37,584 个像素，每个像素在 B4 和 B8 中位置一一对应。
+
+---
+
+### NIR（近红外，Near Infrared）
+
+Sentinel-2 Band 8，波长约 785~899 nm，人眼不可见。
+
+- 健康植被在 NIR 波段**强反射**（细胞结构散射）
+- 裸土/建筑在 NIR 波段反射较弱
+- NDVI 的核心原理：利用 NIR 与 Red 的反射差异检测植被
+
+---
+
+### Element-wise Operation（逐元素运算）
+
+NumPy 的核心特性：一次运算作用于整个数组的每个元素。
+
+```python
+ndvi = (b8 - b4) / (b8 + b4)
+```
+
+这条语句等价于对 37,584 个像素各执行一次 NDVI 公式，**无需 for 循环**。
+
+| 写法 | 执行方式 | 速度 |
+|------|----------|------|
+| `for i in range(174): for j in range(216): ndvi[i][j] = (b8[i][j] - b4[i][j]) / (b8[i][j] + b4[i][j])` | Python 逐像素循环 | 很慢 |
+| `ndvi = (b8 - b4) / (b8 + b4)` | NumPy C 层向量化 | 极快 |
+
+**这是 Python 遥感数据处理的核心工程范式。**
+
+---
+
+### NDVI（归一化植被指数）
+
+```
+NDVI = (NIR - Red) / (NIR + Red)
+     = (B8 - B4) / (B8 + B4)
+```
+
+| NDVI 值 | 含义 |
+|---------|------|
+| 0.6 ~ 1.0 | 茂密健康植被 |
+| 0.3 ~ 0.6 | 稀疏植被 / 草地 |
+| 0.0 ~ 0.3 | 裸土 / 建筑 |
+| -1.0 ~ 0.0 | 水体 / 云 / 阴影 |
+
+**为什么公式有效**：
+- 红光（B4）：植被吸收红光（光合作用）→ 反射低
+- 近红外（B8）：植被散射近红外（细胞结构）→ 反射高
+- 差值越大 → 植被越健康
+
+**本项目实测结果**（基于 `read_geotiff.py` 运行输出）：
+- NDVI min / max / mean / std → 所有像素一次性计算完成
+- shape = (174, 216)，dtype = float32
+
+### CRS（Coordinate Reference System，坐标参考系）
+
+定义影像如何映射到地球表面。
+
+```python
+dataset.crs  # 例如 EPSG:32650（WGS 84 / UTM zone 50N）
+```
+
+EPSG 编码是全球统一的坐标系统编号。UTM（Universal Transverse Mercator）是常用的投影坐标系，单位是米。
+
+### Bounds（地理范围）
+
+影像四个角的经纬度坐标。
+
+```python
+dataset.bounds  # BoundingBox(left=..., bottom=..., right=..., top=...)
+```
+
+格式：`(左, 下, 右, 上)` = `(min_lon, min_lat, max_lon, max_lat)`
+
+### Transform（仿射变换）
+
+6 个参数描述如何从 (row, col) 像素坐标转换为地理坐标。
+
+```python
+dataset.transform  # Affine(a, b, c, d, e, f)
+```
+
+| 参数 | 含义 |
+|------|------|
+| a | 像素宽度（通常 = Resolution） |
+| e | 像素高度（通常 = -Resolution，负值表示北在上） |
+| c, f | 左上角像素的坐标 |
