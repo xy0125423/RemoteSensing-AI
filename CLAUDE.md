@@ -29,8 +29,8 @@
 
 - 当前阶段：**Phase 1 — GeoTIFF 驯服战**
 - 核心流程：GEE 导出 → 本地 GeoTIFF → rasterio 读取 → matplotlib 显示 → 批量处理
-- 已完成：Task 01（GEE 导出）、Task 02（下载到本地）、Task 03（rasterio 读取元数据）、Task 04（B4/B8 numpy 提取 + NDVI 首次计算）
-- 进行中：Task 05（matplotlib 真彩色显示）
+- 已完成：Task 01（GEE 导出）、Task 02（下载到本地）、Task 03（rasterio 读取元数据）、Task 04（B4/B8 numpy 提取 + NDVI 首次计算）、Task 05（matplotlib 真彩色显示 + Clip/Normalize/extent）
+- 进行中：Task 06（GEE 批量导出 — Server-side/Client-side 机制已理解，待实际运行批量导出脚本）
 - 数据就绪：data/raw/sentinel2_sample.tif（郓城县 2025-01-03，B2/B3/B4/B8）
 - 详细进度见：docs/TASK_ROADMAP.md + docs/TODAY.md
 

@@ -179,6 +179,12 @@ python main.py --region 广西
 
 ✅ NumPy Element-wise Operation：NDVI = (B8 - B4) / (B8 + B4) 首次计算成功
 
+✅ Task 05：Matplotlib 真彩色显示（B4-B3-B2 Stack → Clip → Normalize → imshow + extent）
+
+✅ Task 05：Matplotlib 显示 Sentinel-2 真彩色影像（B4-B3-B2）— 含 Clip + Normalize + extent
+
+🔄 Task 06（前半）：GEE 批量导出机制理解（Server-side vs Client-side / evaluate / toList / 类型转换）
+
 ### 当前进度
 
 - 环境搭建：██████████ 100%
@@ -186,15 +192,15 @@ python main.py --region 广西
 - GEE 基础：██████████ 100%
 - 数据筛选：██████████ 100%
 - 第一张 Image：██████████ 100%
-- GeoTIFF 导出：██████████ 100%
-- Python 读取：██████░░░░ 60%
+- GeoTIFF 导出：████████░░ 90%
+- Python 读取：████████░░ 80%
 - NDVI：███░░░░░░░ 30%
 - 时序分析：░░░░░░░░░░ 0%
 - FFT：░░░░░░░░░░ 0%
 - PDF 自动报告：░░░░░░░░░░ 0%
 
-### 下一阶段（Task 05）
+### 下一阶段（Task 06 后半 + Task 07）
 
-- 使用 matplotlib 显示 Sentinel-2 真彩色影像（B4-B3-B2）
-- 2%~98% 对比度拉伸（clip + normalize）
-- 坐标轴显示经纬度
+- 在 GEE 中实际运行批量导出脚本，创建 28 个 Tasks
+- 下载至少 5 景 GeoTIFF 到本地 data/raw/
+- Python 批量读取 GeoTIFF 元数据汇总

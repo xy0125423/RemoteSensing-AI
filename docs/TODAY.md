@@ -191,9 +191,9 @@ ndvi = (b8 - b4) / (b8 + b4)
 
 ### 明天计划（Task 05）
 
-- [ ] 使用 matplotlib 显示 Sentinel-2 真彩色影像（B4-B3-B2）
-- [ ] 对数据进行 2%~98% 拉伸（clip），增强对比度
-- [ ] 尝试使用 rasterio 的 transform 设置正确的坐标轴
+- [√] 使用 matplotlib 显示 Sentinel-2 真彩色影像（B4-B3-B2）
+- [√] 对数据进行 2%~98% 拉伸（clip），增强对比度
+- [√] 使用 extent 设置真实地理坐标轴
 
 ---
 
@@ -309,6 +309,72 @@ DatasetReader（读取器，不是数据本身）
 
 ---
 
+---
+
+## 2026-07-05
+
+### ✅ Task 05 完成：Matplotlib 显示 Sentinel-2 真彩色影像
+
+编写 `src/show_rgb.py`，使用 matplotlib 成功显示研究区 Sentinel-2 真彩色影像。
+
+**完成内容**：
+- [√] 使用 `np.stack([b4, b3, b2], axis=-1)` 合成 (H, W, 3) RGB 数组
+- [√] 对数据进行 2%~98% Clip + Normalize，解决原始数据显示全白问题
+- [√] 使用 `extent` 参数设置真实地理坐标轴
+- [√] 建立了遥感影像显示的标准流程
+
+**标准显示流程**：
+```
+GeoTIFF → 读取 B2/B3/B4 → Stack RGB → Clip(2%, 98%) → Normalize(0,1) → imshow + extent → 真实地理坐标
+```
+
+### 今天学到的核心概念（15 项）
+
+| # | 概念 | 一句话理解 |
+|---|------|-----------|
+| 1 | 真彩色合成 | B4→R, B3→G, B2→B，不是随机组合 |
+| 2 | RGB 图像本质 | (H, W, 3) 三维数组，最后一个维度是颜色通道 |
+| 3 | np.stack(axis=-1) | 沿最后一个轴堆叠，得到 (H,W,3) 而非 (3,H,W) |
+| 4 | plt.imshow() | Matplotlib 可直接显示 (H,W,3) 的 RGB ndarray |
+| 5 | 影像发白原因 | 遥感 DN 值 87~3580，imshow 对 float 要求 0~1，>1 被裁为 1 |
+| 6 | Clip | `np.clip(rgb, low, high)` — 去除异常值，不是修改真实数据 |
+| 7 | Normalize | `(rgb - low) / (high - low)` — 映射到 0~1 |
+| 8 | 先 Clip 再 Normalize | 直接 Normalize → 极端值占据动态范围 → 对比度低 |
+| 9 | np.percentile() | 无 axis 参数时对整个 ndarray 所有元素统一计算 |
+| 10 | extent | `[left, right, bottom, top]` 让 imshow 显示真实坐标 |
+| 11 | 像素坐标 vs 地理坐标 | imshow 默认不知道 GeoTIFF 空间位置，需 extent 告知 |
+| 12 | 2%~98% 拉伸 | 教材里的"2%~98% 拉伸"就是今天做的 Clip + Normalize |
+| 13 | 遥感算法本质 | 绝大多数遥感算法 = NumPy 数组上的数学运算 |
+| 14 | NDVI 与 RGB 合成的共性 | 都是逐像素数组运算：NDVI 是逐元素四则运算，RGB 是数组堆叠 |
+| 15 | 显示失败排查链 | 显示发白 → 检查 dtype → 检查范围 → Clip → Normalize → 成功 |
+
+### 今天踩过的坑
+
+1. **第一次 `plt.imshow(rgb)` 图像一片白**
+   - 原因：未做 Clip 和 Normalize，DN 值 87~3580 远超 0~1
+   - 解决：先 Clip(2%, 98%) → Normalize(0, 1) → 正常显示
+
+2. **第一次显示坐标是 0~220（像素坐标）**
+   - 原因：imshow 默认使用像素坐标
+   - 解决：设置 `extent=[bounds.left, bounds.right, bounds.bottom, bounds.top]`
+
+### 今天最大的收获
+
+把期末考试中的"2%~98% 拉伸"和真实工程中的遥感影像显示联系了起来。以前知道要做 2%~98% 拉伸，但不知道为什么。今天通过 Matplotlib 的警告信息，真正理解了为什么需要 Clip、为什么需要 Normalize、为什么不能直接显示原始遥感数据。
+
+**核心理念**：教材、考试和工程实践，其实是在解决同一个问题。
+
+### 当前卡点
+
+- 暂无
+
+### 明天计划（Task 06）
+
+- [√] 理解 ImageCollection 不能直接 Export（需要逐张拆开）
+- [√] 理解 GEE Server-side vs Client-side 运行机制
+- [√] 理解 evaluate() / getInfo() / toList() / get() / ee.Image() 类型转换
+- [√] 理解工程化文件命名（S2_yyyyMMdd）
+
 ### Tech Lead 评价
 
 今天遇到的问题几乎都不是代码错误，而是**概念上的误区**：
@@ -322,3 +388,111 @@ DatasetReader（读取器，不是数据本身）
 7. 单个数值 vs 二维矩阵的区别
 
 这些都是遥感工程初学者最容易混淆的地方。今天把它们逐一澄清，比多写几十行代码更有价值，因为它们会直接影响后续 NDVI、NDWI、EVI、时序分析等所有模块的理解。
+
+
+## 2026-07-07
+
+### ✅ Task 06（前半）：GEE 批量导出 — Server-side 与 Client-side 机制深入理解
+
+今天没有追求快速写代码，而是重点理解 GEE 的运行机制——这是 Task 06 批量导出的理论基础。
+
+**核心认知突破**：理解了为什么 GEE 不能像普通 Python/JavaScript 那样写 for 循环。
+
+### 今天学到的核心概念（13 项）
+
+| # | 概念 | 一句话理解 |
+|---|------|-----------|
+| 1 | ImageCollection 不能直接 Export | Export 要求 ee.Image，不是 ee.ImageCollection，必须逐张拆开 |
+| 2 | toList(n) | ImageCollection → ee.List，才能按索引访问 |
+| 3 | size() | 返回 ee.Number（服务器对象），不是 JavaScript Number |
+| 4 | Server-side Object | ee.Image / ee.ImageCollection / ee.Number / ee.List / ee.Date — 存在于 Google 服务器 |
+| 5 | Client-side Object | JavaScript Number / String / Array / for 循环 — 存在于浏览器 |
+| 6 | evaluate() | ee.Number → JavaScript Number，异步回调方式 |
+| 7 | getInfo() | 同步等待服务器返回（工程中少用，优先 evaluate） |
+| 8 | ee.List.get(i) | ee.List 不能 `[i]`，必须 `.get(i)` |
+| 9 | ee.Image() 类型转换 | get() 返回 Object → ee.Image() 强转后才能调用 select() 等 API |
+| 10 | image.date().format() | ee.Date → 格式化字符串，用于工程化文件命名 |
+| 11 | 循环边界 i < n | n=28 → i=0..27，不是 0..28 |
+| 12 | print() vs evaluate() | print() 只是显示，evaluate() 才是类型转换 |
+| 13 | 为什么 dataset.first() 不够 | 时间序列分析需要 28 景全部影像，不是只有一景 |
+
+### 今天学到的核心机制：Server-side vs Client-side
+
+**GEE 不是在你的浏览器里跑代码**。GEE 代码在 Google 服务器上执行，浏览器只是发送指令和接收结果。
+
+```
+┌─────────────────────────┐     ┌─────────────────────────┐
+│   浏览器（Client-side）    │     │   Google 服务器（Server-side） │
+│                         │     │                         │
+│  JavaScript Number      │ ◀── │  ee.Number              │
+│  String                 │ ◀── │  ee.String              │
+│  Array                  │ ◀── │  ee.List                │
+│  for 循环               │     │  .map() 批量处理         │
+│                         │     │                         │
+│  evaluate() ────────────│───▶ │  计算                    │
+│  getInfo() ─────────────│───▶ │  计算（同步等待）         │
+└─────────────────────────┘     └─────────────────────────┘
+```
+
+**关键理解**：
+- `count = dataset.size()` → `ee.Number`（还在服务器上）
+- `count.evaluate(function(n){...})` → `n = 28`（真正回到浏览器的数字）
+- `for(var i=0; i<count; i++)` ❌ — ee.Number 不能用于 for 循环
+- `for(var i=0; i<n; i++)` ✅ — JavaScript Number 才能用 for
+
+### 今天建立的完整数据流
+
+```
+ImageCollection (28景)
+    │
+    ▼
+.size() → ee.Number(28)
+    │
+    ▼
+.evaluate(function(n){...}) → JavaScript Number(28)
+    │
+    ▼
+.toList(n) → ee.List
+    │
+    ▼
+for(var i=0; i<n; i++)
+    │
+    ▼
+ee.Image(imageList.get(i)) → ee.Image
+    │
+    ▼
+.date().format("yyyyMMdd") → 文件名 "S2_20250315"
+    │
+    ▼
+Export.image.toDrive({image, description, ...})
+```
+
+### 今天踩过的坑
+
+1. **`dataset is not defined`**
+   - 原因：把 `var dataset = ...` 一起注释掉了
+   - 学到的：Task05 中 dataset 创建部分必须保留，只注释 first() / Export / Map.addLayer
+
+2. **误认为 `print(count)` 能把 ee.Number 变成 JavaScript Number**
+   - 原因：看到 print 输出 28，以为已经转换
+   - 纠正：print() 只是终端显示，真正转换需要 `evaluate()`
+
+3. **`imageList[0]` 无法获取影像**
+   - 原因：ee.List 不是 JavaScript Array
+   - 纠正：必须用 `imageList.get(0)`
+
+4. **两次 print 都输出 28，但对象类型不同**
+   - 第一次：ee.Number（服务器对象）
+   - 第二次：JavaScript Number（客户端数字）
+   - 理解：值相同不代表类型相同
+
+### 当前卡点
+
+- 暂无（理论理解完成，下一步实际运行 28 景批量导出）
+
+### 明天计划
+
+- [ ] 在 GEE 中实际运行批量导出脚本，创建 28 个 Tasks
+- [ ] 确认至少 5 个导出任务完成
+- [ ] 开始下载 GeoTIFF 到本地 data/raw/
+- [ ] 准备 Task 07：Python 批量读取 GeoTIFF 元数据

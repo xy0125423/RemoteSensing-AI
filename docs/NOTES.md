@@ -605,6 +605,227 @@ NDVI = (NIR - Red) / (NIR + Red)
 - NDVI min / max / mean / std → 所有像素一次性计算完成
 - shape = (174, 216)，dtype = float32
 
+---
+
+## 2026-07-05
+
+### Sentinel-2 真彩色合成
+
+真彩色不是随机组合三个波段，而是按照人眼感知颜色的方式：
+
+| 波段 | 对应颜色 | 波长范围 |
+|------|---------|---------|
+| B4 | Red（红） | ~665 nm |
+| B3 | Green（绿） | ~560 nm |
+| B2 | Blue（蓝） | ~490 nm |
+
+因此真彩色合成 = `np.stack([B4, B3, B2], axis=-1)`，即 B4 → R 通道、B3 → G 通道、B2 → B 通道。
+
+---
+
+### RGB 图像的数据结构本质
+
+RGB 图像不是三张独立的图片，而是一个三维数组：
+
+```
+(H, W, 3)
+ │  │  │
+ │  │  └── 3 个颜色通道（R, G, B）
+ │  └───── 宽度（列数）
+ └──────── 高度（行数）
+```
+
+每个像素同时拥有 R、G、B 三个值，这三个值共同决定该像素的颜色。
+
+---
+
+### np.stack(axis=-1) 的理解
+
+```python
+rgb = np.stack([b4, b3, b2], axis=-1)  # → (H, W, 3)
+```
+
+- `axis=-1`：沿最后一个轴堆叠，新增一个维度作为颜色通道
+- 结果 shape = `(H, W, 3)`，每个像素是 `[R, G, B]` 三元组
+- 如果用 `axis=0`，会得到 `(3, H, W)` —— Matplotlib 无法直接显示
+
+**工程直觉**：`axis=-1` = "在最后加一个维度"，是遥感中波段堆叠的标准写法。
+
+---
+
+### Matplotlib imshow() 显示 RGB
+
+```python
+plt.imshow(rgb)  # rgb.shape = (H, W, 3)
+```
+
+Matplotlib 能直接识别 `(H, W, 3)` 格式的数组为 RGB 图像。对 float 类型数据，imshow 要求值范围为 **0~1**。
+
+---
+
+### 为什么直接显示遥感影像一片白
+
+Matplotlib 警告信息：
+
+```
+Clipping input data to the valid range for imshow with RGB data.
+Got range [87...3580]
+Expected [0...1]
+```
+
+原因分析：
+1. Sentinel-2 L2A DN 值范围约 87~3580（uint16 存储的地表反射率 × 10000）
+2. imshow 对 float 数据要求 0~1
+3. Matplotlib 自动将所有 >1 的值裁为 1
+4. 结果：绝大多数像素变成白色（1, 1, 1）
+
+**这是遥感影像显示的第一个坑：数据类型不匹配。** 数学上正确的数据 ≠ 显示上正确的图像。
+
+---
+
+### Clip（裁剪）— 去除异常值
+
+```python
+low = np.percentile(rgb, 2)    # 第 2 百分位
+high = np.percentile(rgb, 98)  # 第 98 百分位
+rgb_clip = np.clip(rgb, low, high)
+```
+
+**关键理解**：Clip 不是修改真实数据，而是为了优化显示效果。它的作用是去除极少数的异常值（Outliers），让正常区域占据显示的全部动态范围。这和研究中的"2%~98% 线性拉伸"是同一个操作。
+
+---
+
+### Normalize（归一化）— 映射到 0~1
+
+```python
+rgb_norm = (rgb_clip - low) / (high - low)
+```
+
+将数据线性映射到 0~1：
+- `low` → 0（最暗）
+- `high` → 1（最亮）
+- 中间值按比例分布
+
+这样 imshow() 就能正确显示了。
+
+---
+
+### 为什么先 Clip 再 Normalize
+
+这是遥感影像显示的核心顺序，不可颠倒：
+
+**如果直接 Normalize（不 Clip）**：
+- 极端值（如 87 和 3580）会占据整个 0~1 范围
+- 正常区域（如 500~2000）只能分配到很窄的区间
+- 结果：正常区域对比度极低，几乎一片灰
+
+**先 Clip 再 Normalize**：
+- Clip 先去掉极端的 2% 异常值
+- Normalize 把中间 96% 的正常数据均匀映射到 0~1
+- 结果：正常区域对比度高，显示效果好
+
+**一句话**：Clip 负责去掉异常值，Normalize 负责映射到显示范围。两者各司其职，缺一不可。
+
+---
+
+### np.percentile() 的行为
+
+```python
+np.percentile(rgb, 2)  # 对整个 ndarray 所有元素统一计算
+```
+
+- 默认不传 `axis` 参数时：将整个数组展平（flatten），所有元素一起参与计算
+- 返回：一个标量 float
+- 这是"全局拉伸"的基础——用全图的百分位作为阈值
+
+---
+
+### extent — 告诉 Matplotlib 真实地理坐标
+
+```python
+from rasterio.plot import show
+# 或手动设置：
+bounds = dataset.bounds
+plt.imshow(rgb_norm, extent=[
+    bounds.left,   # X 轴起点
+    bounds.right,  # X 轴终点
+    bounds.bottom, # Y 轴起点
+    bounds.top     # Y 轴终点
+])
+```
+
+**为什么需要 extent**：
+- Matplotlib 不知道 GeoTIFF 的空间位置
+- 默认 imshow() 使用像素坐标（0, 1, 2, ...）
+- extent 告诉 Matplotlib："这张图的真实范围是多少"
+- 设置后，X/Y 轴自动显示为真实地理坐标（经度/纬度或 UTM 米）
+
+**extent 参数顺序**：`[left, right, bottom, top]`，注意 bottom 在前、top 在后。
+
+---
+
+### 遥感影像显示的标准流程
+
+```
+GeoTIFF 文件
+    │
+    ▼
+rasterio.open() → DatasetReader
+    │
+    ▼
+dataset.read(i) → 各波段 numpy 数组
+    │
+    ▼
+np.stack([b4, b3, b2], axis=-1) → (H, W, 3) RGB 数组
+    │
+    ▼
+np.percentile(rgb, [2, 98]) → Clip 阈值
+    │
+    ▼
+np.clip(rgb, low, high) → 去除异常值
+    │
+    ▼
+(rgb - low) / (high - low) → 归一化到 0~1
+    │
+    ▼
+plt.imshow(rgb_norm, extent=bounds) → 显示 + 地理坐标
+```
+
+**五个步骤，缺一不可。这不是"读取即可显示"，而是"读取 → Stack → Clip → Normalize → Display"。**
+
+---
+
+### 核心理念：遥感算法 = NumPy 数组运算
+
+今天建立了一个贯穿整个项目的核心理解：
+
+> 遥感中的大多数算法，本质都是 NumPy 数组上的数学运算。
+
+- NDVI = 逐元素四则运算：`(b8 - b4) / (b8 + b4)`
+- RGB 合成 = 数组堆叠：`np.stack([b4, b3, b2], axis=-1)`
+- Clip = 数组裁剪：`np.clip(rgb, low, high)`
+- Normalize = 区间映射：`(rgb - low) / (high - low)`
+
+所谓"遥感算法"，很多时候就是对数组进行合理的数学处理。
+
+这个理解会成为后续学习 NDWI、EVI、FFT 和深度学习影像处理的重要基础——它们都是 NumPy 数组运算的不同形式。
+
+---
+
+### 2%~98% 拉伸的完整理解
+
+今天最大的突破：把期末考试中的"2%~98% 拉伸"和真实工程中的遥感影像显示联系了起来。
+
+| 教材概念 | 工程实现 | 作用 |
+|---------|---------|------|
+| 2% 截断 | `np.percentile(rgb, 2)` | 找到 2% 分位值 |
+| 98% 截断 | `np.percentile(rgb, 98)` | 找到 98% 分位值 |
+| 线性拉伸 | `(rgb - low) / (high - low)` | 映射到 0~1 |
+
+以前知道要做 2%~98% 拉伸，但不知道为什么。今天通过 Matplotlib 的警告信息，真正理解了每一步的必要性。教材、考试和工程实践，其实是在解决同一个问题。
+
+---
+
 ### CRS（Coordinate Reference System，坐标参考系）
 
 定义影像如何映射到地球表面。
@@ -638,3 +859,260 @@ dataset.transform  # Affine(a, b, c, d, e, f)
 | a | 像素宽度（通常 = Resolution） |
 | e | 像素高度（通常 = -Resolution，负值表示北在上） |
 | c, f | 左上角像素的坐标 |
+
+
+---
+
+## 2026-07-07
+
+### GEE Server-side 与 Client-side（最核心的工程理解）
+
+GEE 不是在你的浏览器里跑代码。所有 `ee.*` 对象都存在于 Google 服务器上，浏览器只是发送指令和接收结果。
+
+```
+┌──────────────────────────┐     ┌──────────────────────────┐
+│  浏览器（Client-side）     │     │  Google 服务器（Server-side）│
+│                          │     │                          │
+│  JavaScript Number       │ ◀── │  ee.Number               │
+│  JavaScript String       │ ◀── │  ee.String               │
+│  JavaScript Array        │ ◀── │  ee.List                 │
+│  for / if / while        │     │  .map() / .filter()      │
+│                          │     │                          │
+│  evaluate(callback) ─────│───▶ │  计算完成后回调           │
+│  getInfo() ──────────────│───▶ │  同步等待（阻塞）         │
+│  print() ────────────────│───▶ │  服务器端打印到终端       │
+└──────────────────────────┘     └──────────────────────────┘
+```
+
+**关键结论**：
+- JavaScript 的 `for` 循环只能使用 JavaScript Number，不能使用 `ee.Number`
+- `ee.Number` 必须先 `evaluate()` 转换为 JavaScript Number
+- `ee.List` 不是 JavaScript Array，不能用 `[i]`，必须用 `.get(i)`
+
+---
+
+### Server-side Object（服务器端对象）
+
+所有以 `ee.` 开头的对象都存在于 Google 服务器上：
+
+| Server-side 类型 | 示例 | 说明 |
+|-----------------|------|------|
+| ee.Image | 单张遥感影像 | 包含多个波段 |
+| ee.ImageCollection | 影像集合 | 不能直接 Export |
+| ee.Number | 服务器端数字 | 不能用于 for 循环 |
+| ee.List | 服务器端列表 | 不能 `[i]` 访问 |
+| ee.Date | 服务器端日期 | 不能直接打印 |
+| ee.String | 服务器端字符串 | 不能直接拼接 |
+
+**核心认识**：这些对象只是"指向服务器数据的引用"，不是真正的数据本身。
+
+---
+
+### Client-side Object（客户端对象）
+
+客户端对象就是普通的 JavaScript 类型，存在于浏览器内存中：
+
+| Client-side 类型 | 示例 |
+|-----------------|------|
+| Number | `28` |
+| String | `"S2_20250315"` |
+| Array | `[1, 2, 3]` |
+| for 循环 | `for(var i=0; i<n; i++)` |
+
+**核心认识**：只有客户端对象才能用于 JavaScript 控制流（for / if / while）。
+
+---
+
+### evaluate() — Server → Client 的桥梁
+
+```javascript
+var count = dataset.size();  // ee.Number，在服务器上
+
+count.evaluate(function(n) {  // n = 28，真正的 JavaScript Number
+    print('影像数量:', n);     // 现在可以用 n 做任何事情
+    for (var i = 0; i < n; i++) {
+        // 批量处理每张影像
+    }
+});
+```
+
+**关键理解**：
+- `evaluate()` 是异步的——服务器计算完成后，通过 callback 返回结果
+- callback 内部的 `n` 就是真正的 JavaScript Number
+- 大型工程中优先使用 `evaluate()`，少用 `getInfo()`（同步阻塞）
+
+---
+
+### getInfo() — 同步等待（应少用）
+
+```javascript
+var n = count.getInfo();  // 同步等待服务器返回 → 28
+```
+
+**与 evaluate() 的区别**：
+
+| 特性 | evaluate() | getInfo() |
+|------|-----------|-----------|
+| 执行方式 | 异步（回调） | 同步（阻塞） |
+| 工程适用 | ✅ 大型工程 | 小脚本 / 调试 |
+| 浏览器体验 | 不卡顿 | 可能卡顿 |
+| 推荐度 | ⭐⭐⭐ | ⭐ |
+
+**原则**：工程代码优先 `evaluate()`，简单调试可用 `getInfo()`。
+
+---
+
+### size() — 获取 ImageCollection 影像数量
+
+```javascript
+var count = dataset.size();
+```
+
+- 返回值：`ee.Number`（不是 JavaScript Number！）
+- 作用：获取 ImageCollection 中有多少张影像
+- 当前数据：28 景 Sentinel-2
+- **后续必须 evaluate() 才能用于 for 循环**
+
+---
+
+### toList() — ImageCollection → ee.List
+
+```javascript
+var imageList = dataset.toList(count);  // count 需要先 evaluate
+```
+
+**为什么需要 toList()**：
+- ImageCollection 更像"数据库"——不能按索引直接访问
+- ee.List 更像"数组"——可以用 `.get(i)` 按索引访问
+- 这是批量处理的必要前提
+
+**注意**：toList() 的参数必须是 JavaScript Number，所以必须先 evaluate()。
+
+---
+
+### ee.List.get(i) — 按索引获取元素
+
+```javascript
+var raw = imageList.get(i);     // 返回 Object
+var image = ee.Image(raw);       // 强转为 ee.Image
+```
+
+**关键理解**：
+- `imageList[i]` ❌ — ee.List 不是 JavaScript Array
+- `imageList.get(i)` ✅ — 索引从 0 开始
+- `.get()` 返回的是通用 Object，需要 `ee.Image()` 类型转换
+
+---
+
+### ee.Image() 类型转换（Type Casting）
+
+```javascript
+var image = ee.Image(imageList.get(i));
+```
+
+**为什么需要类型转换**：
+- `imageList.get(i)` 返回的是通用 Object
+- 只有 `ee.Image` 才能调用 `.select()`, `.date()`, `.bandNames()` 等 API
+- `ee.Image()` 就是告诉 GEE："把这个 Object 当作 Image 处理"
+
+**类比 Python**：相当于 `int("42")` 把字符串转为整数，这里是把 Object 转为 Image。
+
+---
+
+### image.date().format() — 获取影像日期
+
+```javascript
+var dateStr = image.date().format('yyyyMMdd');
+// 返回 ee.String，如 "20250315"
+```
+
+**工程化文件命名**：
+```javascript
+var fileName = 'S2_' + dateStr;  // "S2_20250315"
+```
+
+而不是：
+```javascript
+var fileName = 'image1';  // ❌ 无法区分时间
+```
+
+**为什么用 yyyyMMdd 格式**：
+- 字符串排序 = 时间排序 → Python `sorted(files)` 即可按时间排列
+- 为 NDVI 时间序列分析铺路
+
+---
+
+### 为什么 dataset.first() 不够
+
+`dataset.first()` 只能获取 ImageCollection 中的第一张影像。
+
+这是 Task 01~05 的做法——适合：
+- 查看数据
+- RGB 显示
+- 导出单张影像
+
+但对于 NDVI 时间序列分析：
+```
+需要：Image1 → Image2 → Image3 → ... → Image28
+不是：只取第一张
+```
+
+因此必须从"单张导出"升级到"批量导出"。
+
+---
+
+### 为什么 ImageCollection 不能直接 Export
+
+```javascript
+Export.image.toDrive({
+    image: dataset,  // ❌ dataset 是 ImageCollection，不是 Image
+    ...
+});
+```
+
+`Export.image.toDrive()` 要求输入 `ee.Image`（单张影像），而 ImageCollection 是多张影像的集合。必须：
+```
+ImageCollection → toList → get(i) → ee.Image → Export
+```
+
+---
+
+### GEE 批量导出完整数据流
+
+```
+ImageCollection (28 景)
+    │
+    ▼
+.size()                     → ee.Number(28)
+    │
+    ▼
+.evaluate(function(n){})    → JavaScript Number(28)
+    │
+    ▼
+.toList(n)                  → ee.List
+    │
+    ▼
+for (var i = 0; i < n; i++)
+    │
+    ├── imageList.get(i)    → Object
+    ├── ee.Image(...)       → ee.Image（类型转换）
+    ├── .date().format()    → 文件名日期
+    └── Export.image.toDrive()
+            │
+            ▼
+    GEE Tasks 面板中出现 28 个导出任务
+```
+
+**这是从"单张影像工作流"升级到"批量影像工作流"的范式转换。**
+
+---
+
+### print() vs evaluate() vs getInfo() 速查
+
+| 操作 | 作用 | 返回类型 | 使用场景 |
+|------|------|---------|---------|
+| `print(x)` | 打印到终端 | void | 调试，查看值 |
+| `x.evaluate(fn)` | 异步转换 | JavaScript 类型 | 工程代码 |
+| `x.getInfo()` | 同步转换 | JavaScript 类型 | 小脚本/调试 |
+
+**核心原则**：`print()` 只是看，`evaluate()` 才是"拿回来用"。

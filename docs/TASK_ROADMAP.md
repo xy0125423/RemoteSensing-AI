@@ -97,7 +97,7 @@
 
 ---
 
-### Task 05：使用 matplotlib 显示 Sentinel-2 真彩色影像（B4-B3-B2）
+### [x] Task 05：使用 matplotlib 显示 Sentinel-2 真彩色影像（B4-B3-B2） ✅ 2026-07-05
 
 - **Phase**：Phase 1
 - **预计耗时**：3 小时
@@ -117,11 +117,12 @@
 
 ---
 
-### Task 06：编写批量导出脚本 — 从 GEE 导出全部 28 景影像
+### [🔄] Task 06：编写批量导出脚本 — 从 GEE 导出全部 28 景影像
 
 - **Phase**：Phase 1
 - **预计耗时**：3 小时
 - **依赖任务**：Task 01
+- **进度**：2026-07-07 完成前半（Server-side/Client-side 机制理解 + 批量导出代码流程）
 - **任务描述**：
   在 GEE 中编写脚本，对 Phase 0 筛选出的 28 景影像，循环调用 Export.image.toDrive() 批量导出。每次导出时在文件名中包含日期信息。不使用 GEE Python API，直接在 Code Editor 中用 JavaScript 完成。
 - **具体动作**：
@@ -885,8 +886,8 @@
 | 02 | 1 | ✅ 下载到本地 data/raw/ | 1h | 文件管理 |
 | 03 | 1 | ✅ rasterio 读取元数据 | 2h | rasterio |
 | 04 | 1 | ✅ 提取 B4/B8 为 numpy 数组 | 2h | numpy |
-| 05 | 1 | matplotlib 显示真彩色 | 3h | matplotlib |
-| 06 | 1 | 批量导出 28 景影像 | 3h | GEE batch |
+| 05 | 1 | ✅ matplotlib 显示真彩色 | 3h | matplotlib |
+| 06 | 1 | 🔄 批量导出 28 景影像 | 3h | GEE batch |
 | 07 | 1 | 批量读取元数据汇总 | 2h | glob+rasterio |
 | 08 | 2 | 手动计算一个像素的 NDVI | 1.5h | NDVI 原理 |
 | 09 | 2 | 编写 NDVI 计算函数 | 2h | numpy, rasterio 写入 |
